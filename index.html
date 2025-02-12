@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+</head>
+<body>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <script>
+        const payload = {
+            date: '2025-02-11',
+            students: [
+                { id: '236', rfid: '9000000236' },
+                { id: '237', rfid: '9000000237' },
+                { id: '238', rfid: '9000000238' },
+                { id: '239', rfid: '9000000239' },
+                { id: '240', rfid: '9000000240' },
+                { id: '241', rfid: '9000000241' },
+                { id: '242', rfid: '9000000242' },
+                { id: '243', rfid: '9000000243' },
+                { id: '244', rfid: '9000000244' },
+                { id: '245', rfid: '9000000245' },
+                { id: '246', rfid: '9000000246' },
+                { id: '247', rfid: '9000000247' }
+            ]
+        };
+        axios.post('http://192.168.254.17:3000/logs', payload)
+            .then(function(response) {
+                console.log(response.data);
+            })
+            .catch(function(error) {
+                console.error('Error fetching data:', error);
+            });
+    </script>
+</body>
+</html>
