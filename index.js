@@ -5,6 +5,7 @@ const net = require('net');
 const sqlite3 = require('sqlite3').verbose();
 
 const PORT = process.env.PORT;
+const HOST = process.env.HOST;
 
 // Open (or create) the SQLite database.
 const db = new sqlite3.Database('./rfid.db', (err) => {
@@ -31,11 +32,8 @@ const db = new sqlite3.Database('./rfid.db', (err) => {
   }
 });
 
-// Create a TCP server.
-const server = net.createServer((socket) => {
-  //console.log(`Client connected: ${socket.remoteAddress}:${socket.remotePort}`);
+const socket = new net.Socket();
 
-  // Listen for data from the client.
 socket.on('data', (data) => {
     // Convert the data to a string and trim whitespace.
     const message = data.toString().trim();
@@ -85,7 +83,7 @@ socket.on('data', (data) => {
 });
 
   // Handle client disconnects.
-  socket.on('end', () => {
+  socket.on('close', () => {
     //console.log('Client disconnected.');
   });
 
@@ -93,11 +91,14 @@ socket.on('data', (data) => {
   socket.on('error', (err) => {
     //console.error('Socket error:', err.message);
   });
-});
 
 // Handle server errors.
 server.on('error', (err) => {
   //console.error('Server error:', err.message);
+});
+
+client.connect(PORT, HOST, () => {
+  console.log(`Connected to server at ${HOST}:${PORT}`);
 });
 
 // Start listening on the specified port on all available interfaces.
