@@ -44,7 +44,11 @@ const db = new sqlite3.Database('./rfid.db', (err) => {
 const socket = new net.Socket();
 // Listen for data from the client.
 socket.on('data', (data) => {
-  const message = data.toString().trim();
+  // const hexMessage = data.toString().trim();
+  //convert hex to isUtf8
+  message = Buffer.from(hexMessage, 'hex').toString('utf8');
+  console.log(message);
+  
 
   // Helper function to insert a single RFID value.
   function processPiece(rfid) {
@@ -58,31 +62,33 @@ socket.on('data', (data) => {
     });
   }
 
+  processPiece(message);
+
   // If the message consists only of digits.
-  if (/^\d+$/.test(message)) {
-    if (message.length === 10) {
-      // Exactly a 10-digit RFID.
-      processPiece(message);
-    } else if (message.length > 10) {
-      // Split the string into 10-digit chunks.
-      for (let i = 0; i < message.length; i += 10) {
-        const chunk = message.substring(i, i + 10);
-        if (chunk.length === 10) {
-          processPiece(chunk);
-        } else {
-          socket.write('ignored\n');
-        }
-      }
-    }
-  } else {
-    // If the message contains other characters, try extracting all 10-digit sequences.
-    const matches = message.match(/\d{10}/g);
-    if (matches && matches.length > 0) {
-      matches.forEach(processPiece);
-    } else {
-      socket.write('invalid\n');
-    }
-  }
+  // if (/^\d+$/.test(message)) {
+  //   if (message.length === 10) {
+  //     // Exactly a 10-digit RFID.
+  //     processPiece(message);
+  //   } else if (message.length > 10) {
+  //     // Split the string into 10-digit chunks.
+  //     for (let i = 0; i < message.length; i += 10) {
+  //       const chunk = message.substring(i, i + 10);
+  //       if (chunk.length === 10) {
+  //         processPiece(chunk);
+  //       } else {
+  //         socket.write('ignored\n');
+  //       }
+  //     }
+  //   }
+  // } else {
+  //   // If the message contains other characters, try extracting all 10-digit sequences.
+  //   const matches = message.match(/\d{10}/g);
+  //   if (matches && matches.length > 0) {
+  //     matches.forEach(processPiece);
+  //   } else {
+  //     socket.write('invalid\n');
+  //   }
+  // }
 });
 
 socket.on('close', () => {
@@ -116,6 +122,7 @@ const app = express();
 const fs = require('fs');
 const cors = require('cors');
 const { Console } = require('console');
+const { isUtf8 } = require('buffer');
 const allowedOrigins = CORS_ORIGIN.split(',');
 
 app.use(cors({
