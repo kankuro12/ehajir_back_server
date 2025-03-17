@@ -1,3 +1,7 @@
 /node_modules
 rfid.db
 auths.log
+attendance.db
+attendance.db-shm
+attendance.db-wal
+auths.log

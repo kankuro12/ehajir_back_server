@@ -2,9 +2,16 @@ require('dotenv').config();
 
 const net = require('net');
 const sqlite3 = require('sqlite3').verbose();
+const express = require('express');
 
-SERVER_PORT = process.env.SERVER_PORT || 5000;
-SERVER_HOST = process.env.SERVER_HOST ;
+const SERVER_PORT = process.env.SERVER_PORT || 5000;
+const SERVER_HOST = process.env.SERVER_HOST ;
+
+const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:4200';
+
+const HTTP_HOST = process.env.HTTP_HOST || '0.0.0.0';
+const HTTP_PORT = process.env.HTTP_PORT || 3000;
+
 // Open (or create) the database.
 const db = new sqlite3.Database('./attendance.db', (err) => {
     if (err) {
@@ -12,6 +19,8 @@ const db = new sqlite3.Database('./attendance.db', (err) => {
         process.exit(1);
     }
 });
+
+var lastData = '';
 
 // Configure SQLite for better write concurrency.
 db.run('PRAGMA journal_mode = WAL;');
@@ -96,6 +105,7 @@ function startServer() {
         // Extract the RFID: remove the last 4 hex digits then take the last 24 characters.
         const processedHex = hexMessage.slice(0, -4).slice(-24);
         console.log('Received hex string:', processedHex);
+        lastData = processedHex;
 
         // Get the current date and time.
         const now = new Date();
@@ -137,16 +147,103 @@ function startServer() {
         console.log(`Connected to TCP server at ${SERVER_HOST}:${SERVER_PORT}.`);
     });
 
+    // --- Create Express app for HTTP routes ---
+    const app = express();
+    const fs = require('fs');
+    const cors = require('cors');
+    const allowedOrigins = CORS_ORIGIN.split(',');
+
+    app.use(cors({
+      origin: function(origin, callback) {
+        // allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return callback(null, true);
+        if (allowedOrigins.indexOf(origin) !== -1) {
+          callback(null, true);
+        } else {
+          callback(new Error('Not allowed by CORS'), false);
+        }
+      },
+      credentials: true
+    }));
+    app.use(express.json()); 
+
+    app.get('/check', (req, res) => {
+        console.log(Date.now());
+        
+        res.json({ message: 'Server is running' });
+    });
+
+    app.post('/logs', (req, res) => {
+        const { date, datas,name } = req.body;
+        const rfids = datas.map((data) => data.rfid);
+    
+        // log user_id,date and timestamp toa auths a log file
+        const log = `${name},${date},${new Date().toISOString()}\n`;
+        fs.appendFile('auths.log', log, (err) => {
+            if (err) {
+                console.error('Error writing to log file:', err.message);
+            }
+        });
+      
+    
+        const sql = `SELECT rfid, intime, outtime FROM attendance WHERE date = ? AND rfid IN (${rfids.map(() => '?').join(',')})`;
+        const params = [date, ...rfids];
+        
+        db.all(sql, params, (err, rows) => {
+            if (err) {
+            res.status(500).json({ error: err.message });
+            } else {
+                const responseDatas=[]; //id,start,end
+                rows.forEach(row => {
+                    const data = datas.find((data) => data.rfid === row.rfid);                
+                    responseDatas.push({ id: data.id, check_in: row.intime, check_out: row.outtime });
+                });
+    
+                
+                // datas.forEach((data) => {
+                //     const start = new Date(data.timestamps[0]).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+                //     let end = new Date(data.timestamps[data.timestamps.length - 1]).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+                //     if(start === end) {
+                //         end = null;
+                //     }
+                //     responseDatas.push({ student_id: data.id, check_in:start, check_out:end });
+                // });
+                res.json(responseDatas);
+            }
+        });
+        
+    });
+
+    app.post('/latest', (req, res) => {
+        //return latest data
+        res.json({ data: lastData });
+    });
+
+    app.listen(HTTP_PORT, HTTP_HOST, () => {
+        //load last data from file if file exists
+        if(fs.existsSync('lastData.txt')){
+            lastData = fs.readFileSync('lastData.txt').toString();
+        }
+        
+        console.log(`HTTP Server serving on port http://${HTTP_HOST}:${HTTP_PORT}`);
+    });
+
 
     // Handle graceful shutdown.
     process.on('SIGINT', () => {
+        //save last data to a file 
+        fs.writeFileSync('lastData.txt', lastData);
         console.log('\nShutting down...');
         flushCache();
         insertStmt.finalize();
         updateStmt.finalize();
         db.close();
-        server.close(() => {
-            process.exit(0);
+        socket.destroy();
+        //close express server gracefully
+        app.close(() => {
+            console.log('HTTP Server closed.');
         });
+
+        process.exit(0);
     });
 }
