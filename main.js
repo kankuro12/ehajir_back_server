@@ -214,7 +214,12 @@ function startServer() {
         
     });
 
-    app.post('/latest', (req, res) => {
+    app.post('/latest', (_, res) => {
+        //return latest data
+        res.json({ data: lastData });
+    });
+
+    app.get('/latest', (_, res) => {
         //return latest data
         res.json({ data: lastData });
     });
