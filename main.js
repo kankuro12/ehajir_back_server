@@ -137,6 +137,12 @@ function startServer() {
 
     socket.on('end', () => {
         console.log('Client disconnected.');
+        setTimeout(() => {
+            console.log('Reconnecting to TCP server...');
+            socket.connect(SERVER_PORT, SERVER_HOST, () => {
+                console.log(`Connected to TCP server at ${SERVER_HOST}:${SERVER_PORT}.`);
+            });
+        }, 2000);
     });
 
     socket.on('error', (err) => {
@@ -174,43 +180,51 @@ function startServer() {
     });
 
     app.post('/logs', (req, res) => {
-        const { date, datas,name } = req.body;
-        const rfids = datas.map((data) => data.rfid);
-    
-        // log user_id,date and timestamp toa auths a log file
-        const log = `${name},${date},${new Date().toISOString()}\n`;
-        fs.appendFile('auths.log', log, (err) => {
-            if (err) {
-                console.error('Error writing to log file:', err.message);
-            }
-        });
-      
-    
-        const sql = `SELECT rfid, intime, outtime FROM attendance WHERE date = ? AND rfid IN (${rfids.map(() => '?').join(',')})`;
-        const params = [date, ...rfids];
+        try {
+            
+            const { date, datas,name } = req.body;
+            const rfids = datas.map((data) => data.rfid);
         
-        db.all(sql, params, (err, rows) => {
-            if (err) {
-            res.status(500).json({ error: err.message });
-            } else {
-                const responseDatas=[]; //id,start,end
-                rows.forEach(row => {
-                    const data = datas.find((data) => data.rfid === row.rfid);                
-                    responseDatas.push({ id: data.id, check_in: row.intime, check_out: row.outtime });
-                });
-    
-                
-                // datas.forEach((data) => {
-                //     const start = new Date(data.timestamps[0]).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-                //     let end = new Date(data.timestamps[data.timestamps.length - 1]).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
-                //     if(start === end) {
-                //         end = null;
-                //     }
-                //     responseDatas.push({ student_id: data.id, check_in:start, check_out:end });
-                // });
-                res.json(responseDatas);
-            }
-        });
+            // log user_id,date and timestamp toa auths a log file
+            const log = `${name},${date},${new Date().toISOString()}\n`;
+            fs.appendFile('auths.log', log, (err) => {
+                if (err) {
+                    console.error('Error writing to log file:', err.message);
+                }
+            });
+          
+        
+            const sql = `SELECT rfid, intime, outtime FROM attendance WHERE date = '${date}' AND rfid IN (${rfids.map((rfid) => `'${rfid}'`).join(',')})`;
+            console.log(sql);
+            
+            const params = [];
+            
+            db.all(sql, params, (err, rows) => {
+                if (err) {
+                res.status(500).json({ error: err.message });
+                } else {
+                    const responseDatas=[]; //id,start,end
+                    rows.forEach(row => {
+                        const data = datas.find((data) => data.rfid === row.rfid);                
+                        responseDatas.push({ id: data.id, check_in: row.intime, check_out: row.outtime });
+                    });
+        
+                    
+                    // datas.forEach((data) => {
+                    //     const start = new Date(data.timestamps[0]).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+                    //     let end = new Date(data.timestamps[data.timestamps.length - 1]).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false });
+                    //     if(start === end) {
+                    //         end = null;
+                    //     }
+                    //     responseDatas.push({ student_id: data.id, check_in:start, check_out:end });
+                    // });
+                    res.json(responseDatas);
+                }
+            });
+        } catch (error) {
+            //return 500 error
+            res.status(500).json({ error: error.message });
+        }
         
     });
 
