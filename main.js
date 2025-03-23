@@ -3,6 +3,9 @@ require('dotenv').config();
 const net = require('net');
 const sqlite3 = require('sqlite3').verbose();
 const express = require('express');
+   
+const path = require('path');
+const https = require('https');
 
 const SERVER_PORT = process.env.SERVER_PORT || 5000;
 const SERVER_HOST = process.env.SERVER_HOST ;
@@ -159,6 +162,8 @@ function startServer() {
     const cors = require('cors');
     const allowedOrigins = CORS_ORIGIN.split(',');
 
+
+
     app.use(cors({
       origin: function(origin, callback) {
         // allow requests with no origin (like mobile apps or curl requests)
@@ -238,14 +243,33 @@ function startServer() {
         res.json({ data: lastData });
     });
 
-    app.listen(HTTP_PORT, HTTP_HOST, () => {
-        //load last data from file if file exists
-        if(fs.existsSync('lastData.txt')){
-            lastData = fs.readFileSync('lastData.txt').toString();
-        }
-        
-        console.log(`HTTP Server serving on port http://${HTTP_HOST}:${HTTP_PORT}`);
-    });
+    //check certs folder load certs in express app if found
+    const certDir = path.join(__dirname, 'certs');
+    const certPath = path.join(certDir, 'cert.pem');
+    const keyPath = path.join(certDir, 'key.pem');
+
+    const hasCert = fs.existsSync(certPath) && fs.existsSync(keyPath);
+    let httpsServer;
+
+    if (hasCert) {
+        const cert = fs.readFileSync(certPath);
+        const key = fs.readFileSync(keyPath);
+        httpsServer = https.createServer({ cert, key }, app);
+        httpsServer.listen(HTTP_PORT, () => {
+            console.log('HTTPS Server serving on port 443');
+        });
+    }else{
+
+        httpsServer=app.listen(HTTP_PORT, HTTP_HOST, () => {
+            //load last data from file if file exists
+            if(fs.existsSync('lastData.txt')){
+                lastData = fs.readFileSync('lastData.txt').toString();
+            }
+            
+            console.log(`HTTP Server serving on port http://${HTTP_HOST}:${HTTP_PORT}`);
+        });
+    }
+
 
 
     // Handle graceful shutdown.
@@ -258,10 +282,21 @@ function startServer() {
         updateStmt.finalize();
         db.close();
         socket.destroy();
+        if(httpsServer){
+            httpsServer.close(() => {
+                console.log('HTTPS Server closed.');
+            });
+        }else{
+            httpsServer.close(() => {
+                console.log('HTTP Server closed.');
+            });
+        }
         //close express server gracefully
-        app.close(() => {
-            console.log('HTTP Server closed.');
-        });
+        // app.close(() => {
+        //     console.log('HTTP Server closed.');
+        // });
+
+        app.
 
         process.exit(0);
     });
