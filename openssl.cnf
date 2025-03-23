@@ -1,0 +1,66 @@
+# OpenSSL configuration file.
+#
+# This is a sample configuration file to be used with OpenSSL commands.
+# Adjust the settings below as needed for your environment.
+
+[ ca ]
+default_ca = CA_default
+
+[ CA_default ]
+# Directory and file locations.
+dir               = ./demoCA
+certs             = $dir/certs
+crl_dir           = $dir/crl
+new_certs_dir     = $dir/newcerts
+database          = $dir/index.txt
+serial            = $dir/serial
+
+# The certificate and private key for the root CA.
+certificate       = $dir/cacert.pem
+private_key       = $dir/private/cakey.pem
+
+# Default message digest.
+default_md        = sha256
+
+# Default validity period.
+default_days      = 365
+
+# Policy for certificate requests.
+policy            = policy_strict
+
+[ policy_strict ]
+countryName             = match
+stateOrProvinceName     = match
+organizationName        = match
+organizationalUnitName  = optional
+commonName              = supplied
+emailAddress            = optional
+
+[ req ]
+# Options for certificate requests.
+default_bits        = 2048
+distinguished_name  = req_distinguished_name
+string_mask         = utf8only
+default_md          = sha256
+
+[ req_distinguished_name ]
+# Fields for the certificate request.
+countryName                     = NP
+countryName_default             = NP
+stateOrProvinceName             = Koshi Province
+stateOrProvinceName_default     = Koshi Province
+localityName                    = Biratnagar
+localityName_default            = Biratnagar
+0.organizationName              = Dairy Co. Technology Pvt. Ltd.
+0.organizationName_default      = Dairy Co. Technology Pvt. Ltd.
+organizationalUnitName          = DEV
+organizationalUnitName_default  = DEV
+commonName                      = Common Name (eg, fully qualified host name)
+commonName_max                  = 64
+
+[ v3_ca ]
+# Extensions for a typical CA.
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always,issuer
+basicConstraints = critical, CA:true
+keyUsage = digitalSignature, cRLSign, keyCertSign
