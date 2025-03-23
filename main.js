@@ -6,6 +6,7 @@ const express = require('express');
    
 const path = require('path');
 const https = require('https');
+const { connect } = require('http2');
 
 const SERVER_PORT = process.env.SERVER_PORT || 5000;
 const SERVER_HOST = process.env.SERVER_HOST ;
@@ -147,20 +148,21 @@ function startServer() {
         console.error('Socket error:', err);
     });
 
-    //halde when server disconnects retry eve 5 seconds
+    var connectionRetry = 1;
+    //handle when server disconnects retry eve 5 seconds
     socket.on('close', () => {
-        console.log('Connection closed. Reconnecting every 5 seconds until successful...');
-        const reconnectInterval = setInterval(() => {
-            socket.connect(SERVER_PORT, SERVER_HOST, () => {
-                console.log(`Connected to TCP server at ${SERVER_HOST}:${SERVER_PORT}.`);
-                clearInterval(reconnectInterval);
-            });
-        }, 5000);
+        console.log('Connection closed. Reconnecting in 5 seconds...',connectionRetry++);
+        initServerConnection();
+        
     });
 
-    socket.connect(SERVER_PORT, SERVER_HOST, () => {
-        console.log(`Connected to TCP server at ${SERVER_HOST}:${SERVER_PORT}.`);
-    });
+    function initServerConnection(){
+        console.log(`Connecting to TCP server at ${SERVER_HOST}:${SERVER_PORT}...`);
+        socket.connect(SERVER_PORT, SERVER_HOST, () => {
+            console.log(`Connected to TCP server at ${SERVER_HOST}:${SERVER_PORT}.`);
+            connectionRetry = 1;
+        });
+    }
 
 
     // --- Create Express app for HTTP routes ---
@@ -264,6 +266,7 @@ function startServer() {
         httpsServer = https.createServer({ cert, key }, app);
         httpsServer.listen(HTTP_PORT, () => {
             console.log(`HTTPS Server serving on port https://${HTTP_HOST}:${HTTP_PORT}`);
+            initServerConnection();
         });
     }else{
 
@@ -274,6 +277,7 @@ function startServer() {
             }
             
             console.log(`HTTP Server serving on port http://${HTTP_HOST}:${HTTP_PORT}`);
+            initServerConnection();
         });
     }
 
