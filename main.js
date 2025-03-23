@@ -6,7 +6,10 @@ const express = require('express');
    
 const path = require('path');
 const https = require('https');
-const { connect } = require('http2');
+const app = express();
+const fs = require('fs');
+const cors = require('cors');
+
 
 const SERVER_PORT = process.env.SERVER_PORT || 5000;
 const SERVER_HOST = process.env.SERVER_HOST ;
@@ -15,6 +18,13 @@ const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:4200';
 
 const HTTP_HOST = process.env.HOST || '0.0.0.0';
 const HTTP_PORT = process.env.HTTP_PORT || 3000;
+
+ //check certs folder load certs in express app if found
+ const certDir = path.join(__dirname, 'certs');
+ const certPath = path.join(certDir, 'cert.pem');
+ const keyPath = path.join(certDir, 'key.pem');
+
+ const hasCert = fs.existsSync(certPath) && fs.existsSync(keyPath);
 
 // Open (or create) the database.
 const db = new sqlite3.Database('./attendance.db', (err) => {
@@ -100,6 +110,7 @@ function flushCache() {
 setInterval(flushCache, BATCH_INTERVAL_MS);
 
 const socket = new net.Socket();
+socket.setMaxListeners(1);
 // Function to start the TCP server.
 function startServer() {
 
@@ -158,20 +169,19 @@ function startServer() {
 
     function initServerConnection(){
         console.log(`Connecting to TCP server at ${SERVER_HOST}:${SERVER_PORT}...`);
-        socket.connect(SERVER_PORT, SERVER_HOST, () => {
+        socket.once('connect', () => {
             console.log(`Connected to TCP server at ${SERVER_HOST}:${SERVER_PORT}.`);
             connectionRetry = 1;
         });
+        socket.connect(SERVER_PORT, SERVER_HOST);
     }
 
 
     // --- Create Express app for HTTP routes ---
-    const app = express();
-    const fs = require('fs');
-    const cors = require('cors');
+    
     const allowedOrigins = CORS_ORIGIN.split(',');
-
-
+    allowedOrigins.push(`http://${HTTP_HOST}:${HTTP_PORT}`);
+    allowedOrigins.push(`https://${HTTP_HOST}:${HTTP_PORT}`);
 
     app.use(cors({
       origin: function(origin, callback) {
@@ -252,12 +262,22 @@ function startServer() {
         res.json({ data: lastData });
     });
 
-    //check certs folder load certs in express app if found
-    const certDir = path.join(__dirname, 'certs');
-    const certPath = path.join(certDir, 'cert.pem');
-    const keyPath = path.join(certDir, 'key.pem');
+    app.get('/qr',(_,res)=>{
+        res.sendFile(path.join(__dirname, 'qr.html'));
+    });
+    app.get('/read',(_,res)=>{
+        res.sendFile(path.join(__dirname, 'read.html'));
+    });
 
-    const hasCert = fs.existsSync(certPath) && fs.existsSync(keyPath);
+    app.post('/qr',(_,res)=>{
+        res.json({
+            scheme: hasCert ? 'https' : 'http',
+            host : HTTP_HOST,
+            port : HTTP_PORT
+        });
+    });
+
+   
     let httpsServer;
 
     if (hasCert) {
