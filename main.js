@@ -12,7 +12,7 @@ const SERVER_HOST = process.env.SERVER_HOST ;
 
 const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:4200';
 
-const HTTP_HOST = process.env.HTTP_HOST || '0.0.0.0';
+const HTTP_HOST = process.env.HOST || '0.0.0.0';
 const HTTP_PORT = process.env.HTTP_PORT || 3000;
 
 // Open (or create) the database.
@@ -140,21 +140,28 @@ function startServer() {
 
     socket.on('end', () => {
         console.log('Client disconnected.');
-        setTimeout(() => {
-            console.log('Reconnecting to TCP server...');
-            socket.connect(SERVER_PORT, SERVER_HOST, () => {
-                console.log(`Connected to TCP server at ${SERVER_HOST}:${SERVER_PORT}.`);
-            });
-        }, 2000);
+        
     });
 
     socket.on('error', (err) => {
         console.error('Socket error:', err);
     });
 
+    //halde when server disconnects retry eve 5 seconds
+    socket.on('close', () => {
+        console.log('Connection closed. Reconnecting every 5 seconds until successful...');
+        const reconnectInterval = setInterval(() => {
+            socket.connect(SERVER_PORT, SERVER_HOST, () => {
+                console.log(`Connected to TCP server at ${SERVER_HOST}:${SERVER_PORT}.`);
+                clearInterval(reconnectInterval);
+            });
+        }, 5000);
+    });
+
     socket.connect(SERVER_PORT, SERVER_HOST, () => {
         console.log(`Connected to TCP server at ${SERVER_HOST}:${SERVER_PORT}.`);
     });
+
 
     // --- Create Express app for HTTP routes ---
     const app = express();
@@ -256,7 +263,7 @@ function startServer() {
         const key = fs.readFileSync(keyPath);
         httpsServer = https.createServer({ cert, key }, app);
         httpsServer.listen(HTTP_PORT, () => {
-            console.log('HTTPS Server serving on port 443');
+            console.log(`HTTPS Server serving on port https://${HTTP_HOST}:${HTTP_PORT}`);
         });
     }else{
 
