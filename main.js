@@ -112,6 +112,24 @@ setInterval(flushCache, BATCH_INTERVAL_MS);
 const socket = new net.Socket();
 socket.setMaxListeners(1);
 // Function to start the TCP server.
+function getCurrentDataTime(){
+    const now = new Date();
+
+    const hours = now.getHours().toString().padStart(2, '0');
+    const minutes = now.getMinutes().toString().padStart(2, '0');
+    const seconds = now.getSeconds().toString().padStart(2, '0');
+
+    const formattedTime = `${hours}:${minutes}:${seconds}`;
+
+    const year = now.getFullYear();
+    const month = (now.getMonth() + 1).toString().padStart(2, '0');
+    const day = now.getDate().toString().padStart(2, '0');
+
+    const formattedDate = `${year}-${month}-${day}`;
+    return { currentDate: formattedDate, currentTime: formattedTime };
+}
+
+
 function startServer() {
 
     socket.on('data', (data) => {
@@ -123,9 +141,8 @@ function startServer() {
         lastData = processedHex;
 
         // Get the current date and time.
-        const now = new Date();
-        const currentDate = now.toISOString().slice(0, 10); // 'YYYY-MM-DD'
-        const currentTime = now.toISOString().slice(11, 19); // 'HH:MM:SS'
+        const { currentDate, currentTime } = getCurrentDataTime();
+        // Log the RFID and timestamp.
 
         // If the cache already has an entry for this RFID, update the outtime.
         if (attendanceCache.has(processedHex)) {
