@@ -15,7 +15,14 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script>
-        var map,location={lat:0,lng:0},marker;
+        var map,loc={lat:0,lng:0},marker,socket;
+
+        function updateMarkerPosition(lat, lng) {
+            if(!marker) return; // Ensure marker exists
+            marker.setLatLng([lat, lng]);
+            map.panTo([lat, lng]);
+        }
+        
         $(document).ready(function () {
             
             // Initialize the map
@@ -26,57 +33,54 @@
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
     
-        });
-
-        // Client-side WebSocket connection
-        const socket = new WebSocket('ws://localhost:8080');
-
-        // Connection opened
-        socket.addEventListener('open', function (event) {
-            console.log('Connected to WebSocket server');
-           
-            socket.send(JSON.stringify({
-                deviceId: '6367' // Replace with actual device ID or get from user input
-            }));
-
-        });
-
-
-        // Listen for messages from the server
-        socket.addEventListener('message', function (event) {
-            console.log('Message from server:', event.data);
-            const data = JSON.parse(event.data);
-            console.log(data);
-
-            if(location.lat!=data.lat || location.lng!=data.lng){
-                location.lat=data.lat;
-                location.lng=data.lng;
-                if(marker){
-                    updateMarkerPosition(location.lat,location.lng);
-                }else{
-                    marker = L.marker([location.lat, location.lng]).addTo(map);
-                    map.setView([location.lat, location.lng], 13);
+            // Client-side WebSocket connection
+            socket = new WebSocket('ws://localhost:8080');
+    
+            // Connection opened
+            socket.addEventListener('open', function (event) {
+                console.log('Connected to WebSocket server');
+               
+                socket.send(JSON.stringify({
+                    deviceId: '6367' // Replace with actual device ID or get from user input
+                }));
+    
+            });
+    
+    
+            // Listen for messages from the server
+            socket.addEventListener('message', function (event) {
+                console.log('Message from server:', event.data);
+                const data = JSON.parse(event.data);
+                console.log(data);
+    
+                if(loc.lat!=data.lat || loc.lng!=data.lng){
+                    loc.lat=data.lat;
+                    loc.lng=data.lng;
+                    if(marker){
+                        updateMarkerPosition(loc.lat,loc.lng);
+                    }else{
+                        marker = L.marker([loc.lat, loc.lng]).addTo(map);
+                        map.setView([loc.lat, loc.lng], 13);
+                    }
                 }
-            }
-            
-            
+                
+                
+            });
+    
+            // Handle connection errors
+            socket.addEventListener('error', function (event) {
+                console.error('WebSocket error:', event);
+            });
+    
+            // Handle disconnection
+            socket.addEventListener('close', function (event) {
+                console.log('Disconnected from WebSocket server:', event.code, event.reason);
+            });
         });
 
-        // Handle connection errors
-        socket.addEventListener('error', function (event) {
-            console.error('WebSocket error:', event);
-        });
 
-        // Handle disconnection
-        socket.addEventListener('close', function (event) {
-            console.log('Disconnected from WebSocket server:', event.code, event.reason);
-        });
-
-        // Example function to update marker position
-        function updateMarkerPosition(lat, lng) {
-            marker.setLatLng([lat, lng]);
-            map.panTo([lat, lng]);
-        }
+       
+       
     </script>
 </body>
 </html>
