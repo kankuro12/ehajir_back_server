@@ -129,10 +129,8 @@ function openSocket(jsessionid) {
 
         socket.onmessage = (event) => {
             const data = JSON.parse(event.data);
-            console.log('Received message:', data);
             if(data.positions){
                 data.positions.forEach(position => {
-                    console.log('Received position:', position);
                     const { deviceId, latitude, longitude } = position;
                     locations[deviceId] = { lat:latitude, lng:longitude };
                 });

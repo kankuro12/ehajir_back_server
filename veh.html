@@ -15,18 +15,73 @@
     <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
     <script>
-        var map,loc={lat:0,lng:0},marker,socket;
+        var map,loc={lat:0,lng:0},marker,locCurrent={lat: 26.497489444444444, lng: 87.28191333333334},markerCurrent,socket,bounds;
 
         function updateMarkerPosition(lat, lng) {
             if(!marker) return; // Ensure marker exists
             marker.setLatLng([lat, lng]);
-            map.panTo([lat, lng]);
+            fixZoom();
+        }
+
+        function setVehicleMarker(lat, lng) {
+            if (!marker) {
+                var busIcon = L.icon({
+                    iconUrl: '/icons/bus.png',
+                    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                    iconSize: [25, 41],
+                    iconAnchor: [12, 41],
+                    popupAnchor: [1, -34],
+                    shadowSize: [41, 41]
+                });
+                marker = L.marker([lat, lng], {icon: busIcon}).addTo(map);
+            } else {
+                marker.setLatLng([lat, lng]);
+            }
+            fixZoom();
+
+        }
+
+        function fixZoom(){
+            //make sure zoomed such it contains both markers
+            bounds = L.latLngBounds([marker.getLatLng(), markerCurrent.getLatLng()]);
+            map.fitBounds(bounds);
         }
         
         $(document).ready(function () {
             
+            // //ask for permission to use geolocation
+            // if (navigator.geolocation) {
+            //     navigator.geolocation.getCurrentPosition(function(position) {
+            //         locCurrent.lat = position.coords.latitude;
+            //         locCurrent.lng = position.coords.longitude;
+            //         // Set the map view to the current location
+            //         map.setView([locCurrent.lat, locCurrent.lng], 15); // Adjust zoom level as needed
+            //         if(markerCurrent){
+            //             markerCurrent.setLatLng([locCurrent.lat, locCurrent.lng]);
+            //         }else{
+            //             markerCurrent = L.marker([locCurrent.lat, locCurrent.lng]).addTo(map);
+            //         }
+
+            //         updateMarkerPosition(locCurrent.lat, locCurrent.lng);
+            //     }, function(error) {
+            //         console.error("Error getting location: ", error);
+            //     });
+            // } else {
+            //     console.error("Geolocation is not supported by this browser.");
+            // }
             // Initialize the map
-            map = L.map('map').setView([51.505, -0.09], 13); // Default view coordinates and zoom level
+            map = L.map('map').setView([locCurrent.lat, locCurrent.lng], 15); 
+            //add marker for current location
+            var redIcon = L.icon({
+                iconUrl: 'https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-red.png',
+                shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+                iconSize: [25, 41],
+                iconAnchor: [12, 41],
+                popupAnchor: [1, -34],
+                shadowSize: [41, 41]
+            });
+            markerCurrent = L.marker([locCurrent.lat, locCurrent.lng], {icon: redIcon}).addTo(map);
+            
     
             // Add a tile layer (you can choose different providers)
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -51,20 +106,12 @@
             socket.addEventListener('message', function (event) {
                 console.log('Message from server:', event.data);
                 const data = JSON.parse(event.data);
-                console.log(data);
     
                 if(loc.lat!=data.lat || loc.lng!=data.lng){
                     loc.lat=data.lat;
                     loc.lng=data.lng;
-                    if(marker){
-                        updateMarkerPosition(loc.lat,loc.lng);
-                    }else{
-                        marker = L.marker([loc.lat, loc.lng]).addTo(map);
-                        map.setView([loc.lat, loc.lng], 13);
-                    }
+                    setVehicleMarker(loc.lat, loc.lng);
                 }
-                
-                
             });
     
             // Handle connection errors
