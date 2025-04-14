@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+</head>
+<body>
+    
+    <div id="map" style="width: 100%; height: 500px;"></div>
+    
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script>
+        var map,location={lat:0,lng:0},marker;
+        $(document).ready(function () {
+            
+            // Initialize the map
+            map = L.map('map').setView([51.505, -0.09], 13); // Default view coordinates and zoom level
+    
+            // Add a tile layer (you can choose different providers)
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            }).addTo(map);
+    
+        });
+
+        // Client-side WebSocket connection
+        const socket = new WebSocket('ws://localhost:8080');
+
+        // Connection opened
+        socket.addEventListener('open', function (event) {
+            console.log('Connected to WebSocket server');
+           
+            socket.send(JSON.stringify({
+                deviceId: '6367' // Replace with actual device ID or get from user input
+            }));
+
+        });
+
+
+        // Listen for messages from the server
+        socket.addEventListener('message', function (event) {
+            console.log('Message from server:', event.data);
+            const data = JSON.parse(event.data);
+            console.log(data);
+
+            if(location.lat!=data.lat || location.lng!=data.lng){
+                location.lat=data.lat;
+                location.lng=data.lng;
+                if(marker){
+                    updateMarkerPosition(location.lat,location.lng);
+                }else{
+                    marker = L.marker([location.lat, location.lng]).addTo(map);
+                    map.setView([location.lat, location.lng], 13);
+                }
+            }
+            
+            
+        });
+
+        // Handle connection errors
+        socket.addEventListener('error', function (event) {
+            console.error('WebSocket error:', event);
+        });
+
+        // Handle disconnection
+        socket.addEventListener('close', function (event) {
+            console.log('Disconnected from WebSocket server:', event.code, event.reason);
+        });
+
+        // Example function to update marker position
+        function updateMarkerPosition(lat, lng) {
+            marker.setLatLng([lat, lng]);
+            map.panTo([lat, lng]);
+        }
+    </script>
+</body>
+</html>
