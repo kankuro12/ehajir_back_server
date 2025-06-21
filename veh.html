@@ -106,6 +106,8 @@
             socket.addEventListener('message', function (event) {
                 console.log('Message from server:', event.data);
                 const data = JSON.parse(event.data);
+                // Update the marker position
+                console.log(event.data);
     
                 if(loc.lat!=data.lat || loc.lng!=data.lng){
                     loc.lat=data.lat;

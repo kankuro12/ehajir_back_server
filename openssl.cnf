@@ -42,6 +42,7 @@ default_bits        = 2048
 distinguished_name  = req_distinguished_name
 string_mask         = utf8only
 default_md          = sha256
+req_extensions      = v3_req
 
 [ req_distinguished_name ]
 # Fields for the certificate request.
@@ -64,3 +65,17 @@ subjectKeyIdentifier = hash
 authorityKeyIdentifier = keyid:always,issuer
 basicConstraints = critical, CA:true
 keyUsage = digitalSignature, cRLSign, keyCertSign
+
+[ v3_req ]
+# Extensions for certificate requests.
+basicConstraints = CA:FALSE
+keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+subjectAltName = @alt_names
+
+[ alt_names ]
+DNS.1 = localhost
+DNS.2 = *.localhost
+IP.1 = 127.0.0.1
+IP.2 = ::1
+IP.3 = 192.168.254.14
+IP.4 = 192.168.254.200

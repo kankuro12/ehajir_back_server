@@ -18,11 +18,11 @@ const CORS_ORIGIN = process.env.CORS_ORIGIN || 'http://localhost:4200';
 
 const HTTP_HOST = process.env.HOST || '0.0.0.0';
 const HTTP_PORT = process.env.HTTP_PORT || 3000;
-
  //check certs folder load certs in express app if found
  const certDir = path.join(__dirname, 'certs');
  const certPath = path.join(certDir, 'cert.pem');
  const keyPath = path.join(certDir, 'key.pem');
+ const caCertPath = path.join(certDir, 'ca-cert.pem'); // Add CA certificate path
 
  const hasCert = fs.existsSync(certPath) && fs.existsSync(keyPath);
 
@@ -295,17 +295,35 @@ function startServer() {
     });
 
    
-    let httpsServer;
-
-    if (hasCert) {
+    let httpsServer;    if (hasCert) {
         const cert = fs.readFileSync(certPath);
         const key = fs.readFileSync(keyPath);
-        httpsServer = https.createServer({ cert, key }, app);
+        const privateKeyPassword = process.env.CERT_PASSWORD || '112233'; // Must match the password in cert.js
+        
+        // Read CA certificate if it exists (for certificate chain)
+        let ca = null;
+        if (fs.existsSync(caCertPath)) {
+            ca = fs.readFileSync(caCertPath);
+        }
+        
+        const httpsOptions = { 
+            cert, 
+            key,
+            passphrase: privateKeyPassword // Add passphrase for password-protected key
+        };
+        
+        // Add CA certificate to the chain if available
+        if (ca) {
+            httpsOptions.ca = ca;
+        }
+        
+        httpsServer = https.createServer(httpsOptions, app);
         httpsServer.listen(HTTP_PORT, () => {
             console.log(`HTTPS Server serving on port https://${HTTP_HOST}:${HTTP_PORT}`);
+            console.log(`✅ Using SSL certificate signed by custom CA`);
+            console.log(`🔐 Certificate includes: ${HTTP_HOST}, localhost, 127.0.0.1`);
             initServerConnection();
-        });
-    }else{
+        });    }else{
 
         httpsServer=app.listen(HTTP_PORT, HTTP_HOST, () => {
             //load last data from file if file exists
@@ -314,6 +332,8 @@ function startServer() {
             }
             
             console.log(`HTTP Server serving on port http://${HTTP_HOST}:${HTTP_PORT}`);
+            console.log(`⚠️  No SSL certificates found - running in HTTP mode`);
+            console.log(`💡 Run 'node cert.js' to generate SSL certificates`);
             initServerConnection();
         });
     }
@@ -338,14 +358,6 @@ function startServer() {
             httpsServer.close(() => {
                 console.log('HTTP Server closed.');
             });
-        }
-        //close express server gracefully
-        // app.close(() => {
-        //     console.log('HTTP Server closed.');
-        // });
-
-        app.
-
-        process.exit(0);
+        }        process.exit(0);
     });
 }
