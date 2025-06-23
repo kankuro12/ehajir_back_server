@@ -3,7 +3,7 @@
 # CONFIGURATION
 SERVICE_NAME="ehazir_back_server"
 USER_NAME="$USER"
-WORK_DIR="/home/$USER/server/ehajir_back_server"
+WORK_DIR="/home/giginnovation/server/ehajir_back_server"
 SCRIPT_FILE="main.js"
 NODE_PATH=$(which node)
 
