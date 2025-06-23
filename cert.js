@@ -98,6 +98,9 @@ try {
     execSync(`openssl x509 -in "${certDir}/ios-cert.pem" -outform der -out "${certDir}/ios-cert.der"`);
     // iOS prefers .cer extension for certificate files
     fs.copyFileSync(`${certDir}/ca-cert.der`, `${certDir}/ios-ca.cer`);
+    fs.copyFileSync(`${certDir}/ca-cert.der`, `${certDir}/ios-ca.crt`);
+    fs.copyFileSync(`${certDir}/ca-cert.der`, `${certDir}/android-ca.crt`);
+    
     fs.copyFileSync(`${certDir}/cert.der`, `${certDir}/ios-cert.cer`);
     // Create iOS profile (mobileconfig will be generated separately)
     execSync(`openssl pkcs12 -export -out "${certDir}/ios-keystore.p12" -inkey "${certDir}/key.pem" -passin pass:${privateKeyPassword} -in "${certDir}/cert.pem" -certfile "${certDir}/ca-cert.pem" -passout pass:${privateKeyPassword} -name "iOSSSL"`);
@@ -110,6 +113,9 @@ try {
     fs.copyFileSync(`${certDir}/cert.pem`, `${certDir}/windows-cert.crt`);
     // Windows PFX format (same as PKCS12 but .pfx extension)
     fs.copyFileSync(`${certDir}/certificate.pfx`, `${certDir}/windows-keystore.pfx`);
+
+
+    execSync()
     
     // Create certificate chains for all platforms
     const certContent = fs.readFileSync(`${certDir}/cert.pem`, 'utf8');

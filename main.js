@@ -7,6 +7,7 @@ const express = require('express');
 const path = require('path');
 const https = require('https');
 const app = express();
+const fileServerApp = express();
 const fs = require('fs');
 const cors = require('cors');
 
@@ -294,6 +295,46 @@ function startServer() {
         });
     });
 
+    //another servet that runs on http 
+    fileServerApp.use(cors({
+        origin: function(origin, callback) {
+          // allow requests with no origin (like mobile apps or curl requests)
+          if (!origin) return callback(null, true);
+          if (allowedOrigins.indexOf(origin) !== -1) {
+            callback(null, true);
+          } else {
+            callback(new Error('Not allowed by CORS'), false);
+          }
+        },
+        credentials: true
+      }));
+
+      //certs folder 
+    fileServerApp.use('/certs', express.static(certDir));
+
+    //list all contents of cert folder
+    fileServerApp.get('/', (req, res) => {
+        fs.readdir(certDir, (err, files) => {
+            if (err) {
+                return res.status(500).json({ error: 'Could not list directory.' });
+            }
+            //as renderede html with download links for each file
+            const fileLinks = files.map(file => {
+                return `<a href="/certs/${file}" download>${file}</a>`;
+            }).join('<br>');
+            res.send(`<h1>Available Certificates</h1>${fileLinks}`);
+        });
+    });
+
+
+    //run file server at 8000
+    fileServerApp.listen(8000, () => {
+        console.log(`File server running on http://${HTTP_HOST}:8000`);
+        console.log(`You can access the certificates at http://${HTTP_HOST}:8000/certs`);
+        console.log(`Or view the list of certificates at http://${HTTP_HOST}:8000/certs-list`);
+    });
+
+
    
     let httpsServer;    if (hasCert) {
         const cert = fs.readFileSync(certPath);
@@ -339,8 +380,7 @@ function startServer() {
     }
 
 
-
-    // Handle graceful shutdown.
+    
     process.on('SIGINT', () => {
         //save last data to a file 
         fs.writeFileSync('lastData.txt', lastData);
