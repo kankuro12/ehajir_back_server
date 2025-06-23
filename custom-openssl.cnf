@@ -1,0 +1,52 @@
+# Custom OpenSSL Configuration for SSL Certificate Generation
+# This configuration is specifically designed for local development certificates
+
+[req]
+default_bits = 2048
+prompt = no
+default_md = sha256
+req_extensions = v3_req
+distinguished_name = dn
+
+[dn]
+C = US
+ST = Development
+L = Local
+O = Local Development Authority
+OU = IT Department
+CN = 192.168.1.91
+
+[v3_req]
+basicConstraints = CA:FALSE
+keyUsage = nonRepudiation, digitalSignature, keyEncipherment
+subjectAltName = @alt_names
+
+[alt_names]
+DNS.1 = localhost
+DNS.2 = *.localhost
+DNS.3 = 192.168.1.91
+IP.1 = 127.0.0.1
+IP.2 = ::1
+IP.3 = 192.168.1.91
+IP.4 = 192.168.10.14
+[v3_ca]
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid:always,issuer
+basicConstraints = critical,CA:true
+keyUsage = critical, digitalSignature, cRLSign, keyCertSign
+# Android requires these extensions for CA certificates
+nsCertType = sslCA, emailCA
+nsComment = "Local Development Root CA for Android"
+
+[server_cert]
+basicConstraints = CA:FALSE
+nsCertType = server
+nsComment = "OpenSSL Generated Server Certificate for Android"
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid,issuer:always
+keyUsage = critical, digitalSignature, keyEncipherment
+extendedKeyUsage = serverAuth, clientAuth
+subjectAltName = @alt_names
+# Android-specific extensions
+certificatePolicies = 1.2.3.4
+# Ensure compatibility with Android's certificate validation
